@@ -2,8 +2,9 @@
 
 ##########################################################################################
 # Disable SELINUX
-sed -e 's/^SELINUX=enforcing/SELINUX=disabled/' -i /etc/selinux/config
-sed -e 's/^SELINUX=permissive/SELINUX=disabled/' -i /etc/selinux/config
+setenforce 0
+sed -i 's/\(^[^#]*\)SELINUX=enforcing/\1SELINUX=disabled/' /etc/selinux/config
+sed -i 's/\(^[^#]*\)SELINUX=permissive/\1SELINUX=disabled/' /etc/selinux/config
 
 ##########################################################################################
 # Set swappiness to minimum
@@ -29,6 +30,11 @@ service ip6tables stop
 chkconfig ntpd on
 ntpd -q
 service ntpd start
+
+##########################################################################################
+# Install java7-devel
+yum install -y java7-devel
+export JAVA_HOME="/etc/alternatives/java_sdk"
 
 ##########################################################################################
 #Disable transparent huge pages
@@ -67,3 +73,4 @@ wait
 ##########################################################################################
 # Re-size root partition
 (echo u;echo d; echo n; echo p; echo 1; cat /sys/block/xvda/xvda1/start; echo; echo w) | fdisk /dev/xvda || :
+

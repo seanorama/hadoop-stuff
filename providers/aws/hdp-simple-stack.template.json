@@ -1,10 +1,14 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
-
-  "Description" : "CloudFormation template to create a VPC with a public subnet on EC2",
-
+  "Description" : "CloudFormation template to Deploy Hortonworks Data Platform on VPC with a public subnet",
   "Parameters" : {
-  
+
+    "KeyName": {
+      "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instance",
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "ConstraintDescription" : "Can contain only ASCII characters."
+    },
+
     "SSHLocation" : {
       "Description" : "SSH access for Ambari Node",
       "Type" : "String",
@@ -14,45 +18,36 @@
       "AllowedPattern" : "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
       "ConstraintDescription" : "Must be a valid CIDR range."
     },
-    
+
     "WorkerInstanceType" : {
       "Description" : "Instance type for worker node",
       "Type" : "String",
       "Default" : "i2.4xlarge",
       "ConstraintDescription" : "Must be a valid EC2 instance type."
     },
-    
-    "WorkerInstnaceCount" : {
+
+    "WorkerInstanceCount" : {
       "Description" : "Number of Worker instances",
       "Type" : "Number",
       "Default" : "2",
       "MinValue" : "1",
       "MaxValue" : "99"
     },
-    
+
     "MasterInstanceType" : {
       "Description" : "Instance type for master node",
       "Type" : "String",
       "Default" : "c3.4xlarge",
       "ConstraintDescription" : "Must be a valid EC2 instance type."
     },
-    
+
     "AmbariInstanceType" : {
       "Description" : "Instance type for Ambari node",
       "Type" : "String",
       "Default" : "m3.large",
       "ConstraintDescription" : "Must be a valid EC2 instance type."
     },
-    
-    "KeyName": {
-      "Description" : "EC2 KeyPair name for SSH access",
-      "Type": "String",
-      "MinLength": "1",
-      "MaxLength": "255",
-      "AllowedPattern" : "[\\x20-\\x7E]*",
-      "ConstraintDescription" : "Must be only ASCII characters."
-    },
-        
+
     "WorkerUseEBS" : {
       "Description" : "Use EBS Volumes for the Worker Node",
       "Default" : "no",
@@ -60,7 +55,7 @@
       "AllowedValues" : ["yes","no"],
       "ConstraintDescription" : "Must be yes or no only."
     },
-    
+
     "MasterUseEBS" : {
       "Description" : "Use EBS Volumes for the Master Node",
       "Default" : "no",
@@ -75,7 +70,7 @@
       "VPC"     : { "CIDR" : "10.0.0.0/16" },
       "Public"  : { "CIDR" : "10.0.0.0/24" }
     },
-    
+
     "RHEL66" : {
       "sa-east-1"          : { "AMI" : "ami-995ce884" },
       "ap-northeast-1"     : { "AMI" : "ami-a15666a0" },
@@ -86,18 +81,18 @@
       "ap-southeast-2"     : { "AMI" : "ami-55e38e6f" },
       "ap-southeast-1"     : { "AMI" : "ami-3813326a" }
     }
-    
+
   },
-  
+
   "Conditions" : {
-   
+
     "MasterUseEBSBool" : { "Fn::Equals" : [ { "Ref" : "MasterUseEBS" } , "yes" ] },
     "WorkerUseEBSBool" : { "Fn::Equals" : [ { "Ref" : "WorkerUseEBS" } , "yes" ] }
 
   },
 
   "Resources" : {
-    
+
     "VPC" : {
       "Type" : "AWS::EC2::VPC",
       "Properties" : {
@@ -151,7 +146,7 @@
         "RouteTableId" : { "Ref" : "PublicRouteTable" }
       }
     },
-    
+
     "AmbariNode" : {
       "Type" : "AWS::EC2::Instance",
       "CreationPolicy": {
@@ -177,39 +172,41 @@
         "UserData": {
           "Fn::Base64": { "Fn::Join": ["",[
             "#!/bin/bash -ex\n",
-            "\n", 
-            "function error_exit\n", 
-            "{\n", 
-            " /opt/aws/bin/cfn-signal -e 1 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref":"AWS::Region"}, " --resource AmbariNode\n", 
-            " exit 1\n", 
+            "\n",
+            "function error_exit\n",
+            "{\n",
+            " /opt/aws/bin/cfn-signal -e 1 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref":"AWS::Region"}, " --resource AmbariNode\n",
+            " exit 1\n",
             "}\n",
-            "\n", 
-            "## Install and Update CloudFormation\n", 
+            "\n",
+            "## Install and Update CloudFormation\n",
             "rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm || :\n",
             "yum install -y https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.amzn1.noarch.rpm\n",
             "yum update -y aws-cfn-bootstrap\n",
-            "\n", 
+            "\n",
             "## Running setup script\n",
-            "wget https://s3.amazonaws.com/hortonworks-cfn-scripts/hdp-setup.sh -O /tmp/hdp-setup.sh",
-            " || error_exit 'Failed to download setup script'\n", 
+            "#wget https://s3.amazonaws.com/hortonworks-cfn-scripts/hdp-setup.sh -O /tmp/hdp-setup.sh",
+            "wget https://raw.githubusercontent.com/seanorama/hadoop-stuff/master/providers/aws/hdp-setup.sh -O /tmp/hdp-setup.sh",
+            " || error_exit 'Failed to download setup script'\n",
             "chmod a+x /tmp/hdp-setup.sh\n",
             "/tmp/hdp-setup.sh > /tmp/hdp-setup.log 2>&1",
-            " || error_exit 'Install failed.See hdp-setup.log for details'\n", 
+            " || error_exit 'Install failed.See hdp-setup.log for details'\n",
             "\n",
-            "## Install Ambari\n", 
+            "## Install Ambari\n",
+            "JAVA_HOME=$(dirname $(dirname $(readlink -e $(which javac))))",
             "wget -nv http://public-repo-1.hortonworks.com/ambari/centos6/1.x/updates/1.7.0/ambari.repo -O /etc/yum.repos.d/ambari.repo",
             " || error_exit 'Ambari repo setup failed'\n",
             "yum install -y ambari-server",
             " || error_exit 'Ambari Server Installation failed'\n",
-            "ambari-server setup -s",
+            "ambari-server setup -j ${JAVA_HOME} -s",
             " || error_exit 'Ambari Server setup failed'\n",
             "ambari-server start",
             " || error_exit 'Ambari Server start-up failed'\n",
             "\n",
-            "## If all went well, signal success\n", 
+            "## If all went well, signal success\n",
             "/opt/aws/bin/cfn-signal -e 0 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref":"AWS::Region"}, " --resource AmbariNode\n",
             "\n",
-            "## Reboot Server\n", 
+            "## Reboot Server\n",
             "reboot"
           ]]}
         }
@@ -230,7 +227,7 @@
           { "DeviceName" : "/dev/sda1", "Ebs" : { "VolumeSize" : "100", "VolumeType" : "gp2" } },
           { "DeviceName" : "/dev/sdb", "Ebs" : { "VolumeSize" : 500, "VolumeType" : "gp2", "DeleteOnTermination" : "True" } },
           { "DeviceName" : "/dev/sdc", "Ebs" : { "VolumeSize" : 500, "VolumeType" : "gp2", "DeleteOnTermination" : "True" } }
-        ],[ 
+        ],[
           { "DeviceName" : "/dev/sda1", "Ebs" : { "VolumeSize" : "100", "VolumeType" : "gp2" } },
           { "DeviceName" : "/dev/sdb", "VirtualName": "ephemeral0" },
           { "DeviceName" : "/dev/sdc", "VirtualName": "ephemeral1" },
@@ -250,26 +247,28 @@
         "UserData": {
           "Fn::Base64": { "Fn::Join": ["",[
             "#!/bin/bash\n",
-            "\n", 
-            "function error_exit\n", 
-            "{\n", 
-            " /opt/aws/bin/cfn-signal -e 1 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref":"AWS::Region" }, " --resource MasterNode\n", 
-            " exit 1\n", 
+            "\n",
+            "function error_exit\n",
+            "{\n",
+            " /opt/aws/bin/cfn-signal -e 1 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref":"AWS::Region" }, " --resource MasterNode\n",
+            " exit 1\n",
             "}\n",
-            "\n", 
-            "## Install and Update CloudFormation\n", 
+            "\n",
+            "## Install and Update CloudFormation\n",
             "rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm || :\n",
             "yum install -y https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.amzn1.noarch.rpm\n",
             "yum update -y aws-cfn-bootstrap\n",
-            "\n", 
+            "\n",
             "## Running setup script\n",
-            "wget https://s3.amazonaws.com/hortonworks-cfn-scripts/hdp-setup.sh -O /tmp/hdp-setup.sh",
-            " || error_exit 'Failed to download setup script'\n", 
+            "#wget https://s3.amazonaws.com/hortonworks-cfn-scripts/hdp-setup.sh -O /tmp/hdp-setup.sh",
+            "wget https://raw.githubusercontent.com/seanorama/hadoop-stuff/master/providers/aws/hdp-setup.sh -O /tmp/hdp-setup.sh",
+            " || error_exit 'Failed to download setup script'\n",
             "chmod a+x /tmp/hdp-setup.sh\n",
             "/tmp/hdp-setup.sh > /tmp/hdp-setup.log 2>&1",
             " || error_exit 'Install failed.See hdp-setup.log for details'\n",
             "\n",
-            "## Install Ambari\n", 
+            "## Install Ambari\n",
+            "JAVA_HOME=$(dirname $(dirname $(readlink -e $(which javac))))",
             "wget -nv http://public-repo-1.hortonworks.com/ambari/centos6/1.x/updates/1.7.0/ambari.repo -O /etc/yum.repos.d/ambari.repo",
             " || error_exit 'Ambari repo setup failed'\n",
             "yum install -y ambari-agent",
@@ -278,10 +277,10 @@
             "ambari-agent start",
             " || error_exit 'Ambari Agent start-up failed'\n",
             "\n",
-            "## If all went well, signal success\n", 
+            "## If all went well, signal success\n",
             "/opt/aws/bin/cfn-signal -e 0 --stack ", { "Ref":"AWS::StackName"}, " --region ", {"Ref": "AWS::Region"}, " --resource MasterNode\n",
             "\n",
-            "## Reboot Server\n", 
+            "## Reboot Server\n",
             "reboot"
           ]]}
         }
@@ -296,17 +295,17 @@
         "VPCZoneIdentifier" : [{ "Ref" : "PublicSubnet" }],
         "LaunchConfigurationName" : { "Ref" : "WorkerNodeLaunchConfig" },
         "MinSize" : 1,
-        "MaxSize" : { "Ref" : "WorkerInstnaceCount" },
-        "DesiredCapacity" : { "Ref" : "WorkerInstnaceCount" }
+        "MaxSize" : { "Ref" : "WorkerInstanceCount" },
+        "DesiredCapacity" : { "Ref" : "WorkerInstanceCount" }
       },
       "CreationPolicy": {
         "ResourceSignal": {
-          "Count": { "Ref" : "WorkerInstnaceCount" },
+          "Count": { "Ref" : "WorkerInstanceCount" },
           "Timeout": "PT30M"
         }
-      }       
+      }
     },
-    
+
     "WorkerNodeLaunchConfig"  : {
       "Type" : "AWS::AutoScaling::LaunchConfiguration",
       "Properties" : {
@@ -321,7 +320,7 @@
           { "DeviceName" : "/dev/sdh", "Ebs" : { "VolumeSize" : 1000, "VolumeType" : "gp2", "DeleteOnTermination" : "True" } },
           { "DeviceName" : "/dev/sdi", "Ebs" : { "VolumeSize" : 1000, "VolumeType" : "gp2", "DeleteOnTermination" : "True" } },
           { "DeviceName" : "/dev/sdj", "Ebs" : { "VolumeSize" : 1000, "VolumeType" : "gp2", "DeleteOnTermination" : "True" } }
-        ],[ 
+        ],[
           { "DeviceName" : "/dev/sda1", "Ebs" : { "VolumeSize" : "100", "VolumeType" : "gp2" } },
           { "DeviceName" : "/dev/sdb", "VirtualName": "ephemeral0" },
           { "DeviceName" : "/dev/sdc", "VirtualName": "ephemeral1" },
@@ -356,26 +355,28 @@
         "UserData": {
           "Fn::Base64": { "Fn::Join": ["",[
             "#!/bin/bash\n",
-            "\n", 
-            "function error_exit\n", 
-            "{\n", 
-            " /opt/aws/bin/cfn-signal -e 1 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref":"AWS::Region"}, " --resource WorkerNodes\n", 
-            " exit 1\n", 
+            "\n",
+            "function error_exit\n",
+            "{\n",
+            " /opt/aws/bin/cfn-signal -e 1 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref":"AWS::Region"}, " --resource WorkerNodes\n",
+            " exit 1\n",
             "}\n",
-            "\n", 
-            "## Install and Update CloudFormation\n", 
+            "\n",
+            "## Install and Update CloudFormation\n",
             "rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm || :\n",
             "yum install -y https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.amzn1.noarch.rpm\n",
             "yum update -y aws-cfn-bootstrap\n",
-            "\n", 
+            "\n",
             "## Running setup script\n",
-            "wget https://s3.amazonaws.com/hortonworks-cfn-scripts/hdp-setup.sh -O /tmp/hdp-setup.sh",
-            " || error_exit 'Failed to download setup script'\n", 
+            "#wget https://s3.amazonaws.com/hortonworks-cfn-scripts/hdp-setup.sh -O /tmp/hdp-setup.sh",
+            "wget https://raw.githubusercontent.com/seanorama/hadoop-stuff/master/providers/aws/hdp-setup.sh -O /tmp/hdp-setup.sh",
+            " || error_exit 'Failed to download setup script'\n",
             "chmod a+x /tmp/hdp-setup.sh\n",
             "/tmp/hdp-setup.sh > /tmp/hdp-setup.log 2>&1",
-            " || error_exit 'Install failed.See hdp-setup.log for details'\n", 
+            " || error_exit 'Install failed.See hdp-setup.log for details'\n",
             "\n",
-            "## Install Ambari\n", 
+            "## Install Ambari\n",
+            "JAVA_HOME=/etc/alternatives/java_sdk",
             "wget -nv http://public-repo-1.hortonworks.com/ambari/centos6/1.x/updates/1.7.0/ambari.repo -O /etc/yum.repos.d/ambari.repo",
             " || error_exit 'Ambari repo setup failed'\n",
             "yum install -y ambari-agent",
@@ -384,16 +385,16 @@
             "ambari-agent start",
             " || error_exit 'Ambari Agent start-up failed'\n",
             "\n",
-            "## If all went well, signal success\n", 
+            "## If all went well, signal success\n",
             "/opt/aws/bin/cfn-signal -e 0 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref": "AWS::Region"}, " --resource WorkerNodes\n",
             "\n",
-            "## Reboot Server\n", 
+            "## Reboot Server\n",
             "reboot"
           ]]}
         }
       }
     },
-    
+
     "AmbariSecurityGroup" : {
       "Type" : "AWS::EC2::SecurityGroup",
       "Properties" : {
@@ -405,11 +406,11 @@
           { "IpProtocol" : "icmp", "FromPort" : "-1", "ToPort" : "-1", "CidrIp" : "10.0.0.0/24"} ,
           { "IpProtocol" : "tcp", "FromPort" : "0", "ToPort" : "65535", "CidrIp" : "10.0.0.0/24"} ,
           { "IpProtocol" : "udp", "FromPort" : "0", "ToPort" : "65535", "CidrIp" : "10.0.0.0/24"} ,
-          { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : { "Ref" : "SSHLocation" } } 
+          { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : { "Ref" : "SSHLocation" } }
         ]
       }
     },
-    
+
     "DefaultSecurityGroup" : {
         "Type" : "AWS::EC2::SecurityGroup",
         "Properties" : {
@@ -419,7 +420,7 @@
             { "IpProtocol" : "icmp", "FromPort" : "-1", "ToPort" : "-1", "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "VPC", "CIDR" ]} },
             { "IpProtocol" : "tcp", "FromPort" : "0", "ToPort" : "65535", "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "VPC", "CIDR" ]} },
             { "IpProtocol" : "udp", "FromPort" : "0", "ToPort" : "65535", "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "VPC", "CIDR" ]} },
-            { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : { "Ref" : "SSHLocation" } } 
+            { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : { "Ref" : "SSHLocation" } }
           ]
         }
      }

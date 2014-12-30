@@ -1,9 +1,18 @@
+### Local workstation configuration
+
+brew install awscli jq
+
+
+
 ### Getting HDP deployed with Ambari and then some benchmarking
 
-Issues:
- - need:
- ```
-sudo yum install java-1.6.0-openjdk-devel
-sudo yum groupinstall “Development Tools”
+
+#### Personal notes while learning AWS CloudFormation:
+
+Validate template:
+  cloudformation validate-template --template-body file:///Users/sroberts/Projects/hdp-aws/aws/hdp-simple-stack.template.json
 
 
+
+#### To be scripted for benchmark tools
+```sudo yum groupinstall “Development Tools”```
