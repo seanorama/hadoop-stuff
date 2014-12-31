@@ -1,0 +1,3 @@
+[submodule "deployment/ambari-vagrant"]
+	path = deployment/ambari-vagrant
+	url = https://github.com/seanorama/ambari-vagrant

@@ -1,0 +1,7 @@
+{
+    "type": "ami",
+    "ami": {
+        "owner": "679593333241",
+        "name": "CentOS"
+    }
+}
