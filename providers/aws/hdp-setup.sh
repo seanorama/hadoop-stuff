@@ -27,6 +27,7 @@ service ip6tables stop
 
 ##########################################################################################
 # Ensure NTPD is turned on and run update
+yum install -y ntp
 chkconfig ntpd on
 ntpd -q
 service ntpd start
