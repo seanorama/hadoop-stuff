@@ -93,7 +93,7 @@
       "ap-southeast-1"     : { "AMI" : "ami-3813326a" }
     },
 
-    "centos_6" : {
+    "CENTOS6" : {
       "ap-northeast-1": { "AMI": "ami-25436924" },
       "ap-southeast-1": { "AMI": "ami-0aaf8858" },
       "ap-southeast-2": { "AMI": "ami-ef5133d5" },
@@ -180,7 +180,7 @@
         "BlockDeviceMappings" : [
           { "DeviceName" : "/dev/sda1", "Ebs" : { "VolumeSize" : "100", "VolumeType" : "gp2" } }
         ],
-        "ImageId" : { "Fn::FindInMap" : [ "centos_6", { "Ref" : "AWS::Region" }, "AMI" ] },
+        "ImageId" : { "Fn::FindInMap" : [ "RHEL66", { "Ref" : "AWS::Region" }, "AMI" ] },
         "NetworkInterfaces" : [{
           "GroupSet"                 : [{ "Ref" : "AmbariSecurityGroup" }],
           "AssociatePublicIpAddress" : "true",
@@ -194,16 +194,16 @@
           "Fn::Base64": { "Fn::Join": ["",[
             "#!/bin/bash -ex\n",
             "\n",
+            "## Install and Update CloudFormation\n",
+            "rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm || :\n",
+            "yum install -y https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.amzn1.noarch.rpm\n",
+            "yum update -y aws-cfn-bootstrap\n",
+            "\n",
             "function error_exit\n",
             "{\n",
             " /opt/aws/bin/cfn-signal -e 1 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref":"AWS::Region"}, " --resource AmbariNode\n",
             " exit 1\n",
             "}\n",
-            "\n",
-            "## Install and Update CloudFormation\n",
-            "rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm || :\n",
-            "yum install -y https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.amzn1.noarch.rpm\n",
-            "yum update -y aws-cfn-bootstrap\n",
             "\n",
             "## Running setup script\n",
             "curl https://raw.githubusercontent.com/seanorama/hadoop-stuff/master/providers/aws/hdp-setup.sh -o /tmp/hdp-setup.sh",
@@ -254,7 +254,7 @@
           { "DeviceName" : "/dev/sdd", "VirtualName": "ephemeral2" },
           { "DeviceName" : "/dev/sde", "VirtualName": "ephemeral3" }
         ]]},
-        "ImageId" : { "Fn::FindInMap" : [ "centos_6", { "Ref" : "AWS::Region" }, "AMI" ] },
+        "ImageId" : { "Fn::FindInMap" : [ "RHEL66", { "Ref" : "AWS::Region" }, "AMI" ] },
         "NetworkInterfaces" : [{
           "GroupSet"                 : [{ "Ref" : "DefaultSecurityGroup" }],
           "AssociatePublicIpAddress" : "true",
@@ -268,16 +268,16 @@
           "Fn::Base64": { "Fn::Join": ["",[
             "#!/bin/bash\n",
             "\n",
+            "## Install and Update CloudFormation\n",
+            "rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm || :\n",
+            "yum install -y https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.amzn1.noarch.rpm\n",
+            "yum update -y aws-cfn-bootstrap\n",
+            "\n",
             "function error_exit\n",
             "{\n",
             " /opt/aws/bin/cfn-signal -e 1 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref":"AWS::Region" }, " --resource MasterNode\n",
             " exit 1\n",
             "}\n",
-            "\n",
-            "## Install and Update CloudFormation\n",
-            "rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm || :\n",
-            "yum install -y https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.amzn1.noarch.rpm\n",
-            "yum update -y aws-cfn-bootstrap\n",
             "\n",
             "## Running setup script\n",
             "curl https://raw.githubusercontent.com/seanorama/hadoop-stuff/master/providers/aws/hdp-setup.sh -o /tmp/hdp-setup.sh",
@@ -366,7 +366,7 @@
           { "DeviceName" : "/dev/sdx", "VirtualName": "ephemeral22" },
           { "DeviceName" : "/dev/sdy", "VirtualName": "ephemeral23" }
         ]]},
-        "ImageId"        : { "Fn::FindInMap" : [ "centos_6", { "Ref" : "AWS::Region" }, "AMI" ] },
+        "ImageId"        : { "Fn::FindInMap" : [ "RHEL66", { "Ref" : "AWS::Region" }, "AMI" ] },
         "SecurityGroups" : [ { "Ref" : "DefaultSecurityGroup" } ],
         "InstanceType"   : { "Ref" : "WorkerInstanceType" },
         "KeyName"        : { "Ref" : "KeyName" },
@@ -375,16 +375,16 @@
           "Fn::Base64": { "Fn::Join": ["",[
             "#!/bin/bash\n",
             "\n",
+            "## Install and Update CloudFormation\n",
+            "rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm || :\n",
+            "yum install -y https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.amzn1.noarch.rpm\n",
+            "yum update -y aws-cfn-bootstrap\n",
+            "\n",
             "function error_exit\n",
             "{\n",
             " /opt/aws/bin/cfn-signal -e 1 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref":"AWS::Region"}, " --resource WorkerNodes\n",
             " exit 1\n",
             "}\n",
-            "\n",
-            "## Install and Update CloudFormation\n",
-            "rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm || :\n",
-            "yum install -y https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.amzn1.noarch.rpm\n",
-            "yum update -y aws-cfn-bootstrap\n",
             "\n",
             "## Running setup script\n",
             "curl https://raw.githubusercontent.com/seanorama/hadoop-stuff/master/providers/aws/hdp-setup.sh -o /tmp/hdp-setup.sh",
