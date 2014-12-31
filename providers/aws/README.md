@@ -16,6 +16,13 @@ Note: I did not write the initial tempalte or scripts. This is a work in progres
   - 1. Deploy a new stack from CloudFormation  [CloudFormation](https://console.aws.amazon.com/cloudformation/) with name ‘hdp-simple’ using the json template
   - 2. Execute ‘hdp-install.sh’ from the Ambari node. You will be prompted for your AWS credentials.
 
+### Todo:
+
+  - Switch to official CentOS AMI: https://aws.amazon.com/marketplace/pp/B00NQAYLWO?
+
+
+
+
 
 #### To be scripted for benchmark tools
-```sudo yum groupinstall “Development Tools”```
+```sudo yum groupinstall "Development Tools"```
