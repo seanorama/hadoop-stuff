@@ -23,7 +23,11 @@
       "Description" : "Instance type for worker node",
       "Type" : "String",
       "Default" : "i2.4xlarge",
-      "ConstraintDescription" : "Must be a valid EC2 instance type."
+      "ConstraintDescription" : "Must be a valid EC2 instance type.",
+      "AllowedValues": [
+        "m3.large",
+        "i2.4xlarge"
+      ]
     },
 
     "WorkerInstanceCount" : {
@@ -38,14 +42,21 @@
       "Description" : "Instance type for master node",
       "Type" : "String",
       "Default" : "c3.4xlarge",
-      "ConstraintDescription" : "Must be a valid EC2 instance type."
+      "ConstraintDescription" : "Must be a valid EC2 instance type.",
+      "AllowedValues": [
+        "m3.large",
+        "c3.4xlarge"
+      ]
     },
 
     "AmbariInstanceType" : {
       "Description" : "Instance type for Ambari node",
       "Type" : "String",
       "Default" : "m3.large",
-      "ConstraintDescription" : "Must be a valid EC2 instance type."
+      "ConstraintDescription" : "Must be a valid EC2 instance type.",
+      "AllowedValues": [
+        "m3.large"
+      ]
     },
 
     "WorkerUseEBS" : {
@@ -80,8 +91,18 @@
       "us-west-2"          : { "AMI" : "ami-5fbcf36f" },
       "ap-southeast-2"     : { "AMI" : "ami-55e38e6f" },
       "ap-southeast-1"     : { "AMI" : "ami-3813326a" }
-    }
+    },
 
+    "centos_6" : {
+      "ap-northeast-1": { "AMI": "ami-25436924" },
+      "ap-southeast-1": { "AMI": "ami-0aaf8858" },
+      "ap-southeast-2": { "AMI": "ami-ef5133d5" },
+      "eu-west-1": { "AMI": "ami-4ac6653d" },
+      "sa-east-1": { "AMI": "ami-9b962386" },
+      "us-east-1": { "AMI": "ami-bc8131d4" },
+      "us-west-1": { "AMI": "ami-33c1ca76" },
+      "us-west-2": { "AMI": "ami-a9de9c99" }
+    }
   },
 
   "Conditions" : {
@@ -159,7 +180,7 @@
         "BlockDeviceMappings" : [
           { "DeviceName" : "/dev/sda1", "Ebs" : { "VolumeSize" : "100", "VolumeType" : "gp2" } }
         ],
-        "ImageId" : { "Fn::FindInMap" : [ "RHEL66", { "Ref" : "AWS::Region" }, "AMI" ] },
+        "ImageId" : { "Fn::FindInMap" : [ "centos_6", { "Ref" : "AWS::Region" }, "AMI" ] },
         "NetworkInterfaces" : [{
           "GroupSet"                 : [{ "Ref" : "AmbariSecurityGroup" }],
           "AssociatePublicIpAddress" : "true",
@@ -185,7 +206,7 @@
             "yum update -y aws-cfn-bootstrap\n",
             "\n",
             "## Running setup script\n",
-            "wget https://raw.githubusercontent.com/seanorama/hadoop-stuff/master/providers/aws/hdp-setup.sh -O /tmp/hdp-setup.sh",
+            "curl https://raw.githubusercontent.com/seanorama/hadoop-stuff/master/providers/aws/hdp-setup.sh -o /tmp/hdp-setup.sh",
             " || error_exit 'Failed to download setup script'\n",
             "chmod a+x /tmp/hdp-setup.sh\n",
             "/tmp/hdp-setup.sh > /tmp/hdp-setup.log 2>&1",
@@ -193,7 +214,7 @@
             "\n",
             "## Install Ambari\n",
             "JAVA_HOME=/etc/alternatives/java_sdk\n",
-            "wget -nv http://public-repo-1.hortonworks.com/ambari/centos6/1.x/updates/1.7.0/ambari.repo -O /etc/yum.repos.d/ambari.repo",
+            "curl http://public-repo-1.hortonworks.com/ambari/centos6/1.x/updates/1.7.0/ambari.repo -o /etc/yum.repos.d/ambari.repo",
             " || error_exit 'Ambari repo setup failed'\n",
             "yum install -y ambari-server",
             " || error_exit 'Ambari Server Installation failed'\n",
@@ -233,7 +254,7 @@
           { "DeviceName" : "/dev/sdd", "VirtualName": "ephemeral2" },
           { "DeviceName" : "/dev/sde", "VirtualName": "ephemeral3" }
         ]]},
-        "ImageId" : { "Fn::FindInMap" : [ "RHEL66", { "Ref" : "AWS::Region" }, "AMI" ] },
+        "ImageId" : { "Fn::FindInMap" : [ "centos_6", { "Ref" : "AWS::Region" }, "AMI" ] },
         "NetworkInterfaces" : [{
           "GroupSet"                 : [{ "Ref" : "DefaultSecurityGroup" }],
           "AssociatePublicIpAddress" : "true",
@@ -259,7 +280,7 @@
             "yum update -y aws-cfn-bootstrap\n",
             "\n",
             "## Running setup script\n",
-            "wget https://raw.githubusercontent.com/seanorama/hadoop-stuff/master/providers/aws/hdp-setup.sh -O /tmp/hdp-setup.sh",
+            "curl https://raw.githubusercontent.com/seanorama/hadoop-stuff/master/providers/aws/hdp-setup.sh -o /tmp/hdp-setup.sh",
             " || error_exit 'Failed to download setup script'\n",
             "chmod a+x /tmp/hdp-setup.sh\n",
             "/tmp/hdp-setup.sh > /tmp/hdp-setup.log 2>&1",
@@ -267,7 +288,7 @@
             "\n",
             "## Install Ambari\n",
             "JAVA_HOME=/etc/alternatives/java_sdk\n",
-            "wget -nv http://public-repo-1.hortonworks.com/ambari/centos6/1.x/updates/1.7.0/ambari.repo -O /etc/yum.repos.d/ambari.repo",
+            "curl http://public-repo-1.hortonworks.com/ambari/centos6/1.x/updates/1.7.0/ambari.repo -o /etc/yum.repos.d/ambari.repo",
             " || error_exit 'Ambari repo setup failed'\n",
             "yum install -y ambari-agent",
             " || error_exit 'Ambari Agent Installation failed'\n",
@@ -345,7 +366,7 @@
           { "DeviceName" : "/dev/sdx", "VirtualName": "ephemeral22" },
           { "DeviceName" : "/dev/sdy", "VirtualName": "ephemeral23" }
         ]]},
-        "ImageId"        : { "Fn::FindInMap" : [ "RHEL66", { "Ref" : "AWS::Region" }, "AMI" ] },
+        "ImageId"        : { "Fn::FindInMap" : [ "centos_6", { "Ref" : "AWS::Region" }, "AMI" ] },
         "SecurityGroups" : [ { "Ref" : "DefaultSecurityGroup" } ],
         "InstanceType"   : { "Ref" : "WorkerInstanceType" },
         "KeyName"        : { "Ref" : "KeyName" },
@@ -366,7 +387,7 @@
             "yum update -y aws-cfn-bootstrap\n",
             "\n",
             "## Running setup script\n",
-            "wget https://raw.githubusercontent.com/seanorama/hadoop-stuff/master/providers/aws/hdp-setup.sh -O /tmp/hdp-setup.sh",
+            "curl https://raw.githubusercontent.com/seanorama/hadoop-stuff/master/providers/aws/hdp-setup.sh -o /tmp/hdp-setup.sh",
             " || error_exit 'Failed to download setup script'\n",
             "chmod a+x /tmp/hdp-setup.sh\n",
             "/tmp/hdp-setup.sh > /tmp/hdp-setup.log 2>&1",
@@ -374,7 +395,7 @@
             "\n",
             "## Install Ambari\n",
             "JAVA_HOME=/etc/alternatives/java_sdk\n",
-            "wget -nv http://public-repo-1.hortonworks.com/ambari/centos6/1.x/updates/1.7.0/ambari.repo -O /etc/yum.repos.d/ambari.repo",
+            "curl http://public-repo-1.hortonworks.com/ambari/centos6/1.x/updates/1.7.0/ambari.repo -o /etc/yum.repos.d/ambari.repo",
             " || error_exit 'Ambari repo setup failed'\n",
             "yum install -y ambari-agent",
             " || error_exit 'Ambari Agent Installation failed'\n",
