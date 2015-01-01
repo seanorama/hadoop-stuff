@@ -1,3 +1,6 @@
 [submodule "deployment/ambari-vagrant"]
 	path = deployment/ambari-vagrant
 	url = https://github.com/seanorama/ambari-vagrant
+[submodule "benchmark/hive-testbench"]
+	path = benchmark/hive-testbench
+	url = https://github.com/seanorama/hive-testbench
