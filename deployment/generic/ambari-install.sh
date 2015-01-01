@@ -172,7 +172,8 @@ set -o pipefail
 ### Run it
 ##########
 
-if [[ "$(python -mplatform)" != *"centos-6"* ]]; then
+# add redhat-6
+if [[ "$(python -mplatform)" != *"(centos|redhat)-6"* ]]; then
   error "This script is only tested with CentOS-6:"
   error "  - But you are using:" "$(python -mplatform)"
   exit
@@ -190,32 +191,31 @@ cat <<-'EOF'
 
 EOF
 
-
 echo # Disabling selinux
 setenforce 0
 sed -i 's/\(^[^#]*\)SELINUX=enforcing/\1SELINUX=disabled/' /etc/selinux/config
 sed -i 's/\(^[^#]*\)SELINUX=permissive/\1SELINUX=disabled/' /etc/selinux/config
 
-echo # disabling swap
-echo 0 | tee /proc/sys/vm/swappiness
-echo '' >> /etc/sysctl.conf
-echo '#Set swappiness to 0 to avoid swapping' >> /etc/sysctl.conf
-echo 'vm.swappiness = 0' >> /etc/sysctl.conf
+# debatable:
+#echo # disabling swap
+#echo 0 | tee /proc/sys/vm/swappiness
+#echo '' >> /etc/sysctl.conf
+#echo '#Set swappiness to 0 to avoid swapping' >> /etc/sysctl.conf
+#echo 'vm.swappiness = 0' >> /etc/sysctl.conf
 
-echo # Disabling unnecessary services
-chkconfig cups off || true
-chkconfig postfix off || true
+# should we do this?
+#echo # Disabling unnecessary services
+#chkconfig cups off || true
+#chkconfig postfix off || true
+
 chkconfig iptables off || true
 chkconfig ip6tables off || true
-
-service iptables stop
-service ip6tables stop
-
-echo # enabling ntp
-yum -y install ntp
-chkconfig ntpd on
+service iptables stop || true
+service ip6tables stop || true
+yum -y install ntp || true
+chkconfig ntpd on || true
 ntpd -q
-service ntpd start
+service ntpd start || true
 
 echo # installing java7
 yum install -y java7-devel
@@ -240,37 +240,37 @@ echo 'if test -f /sys/kernel/mm/transparent_hugepage/khugepaged/defrag; then' >>
 echo '   echo no > /sys/kernel/mm/transparent_hugepage/khugepaged/defrag' >> /etc/rc.local
 echo 'fi' >> /etc/rc.local
 
-echo # formatting ephemeral drives and mounting
-sed '/^\/dev\/xvd[b-z]/d' -i /etc/fstab
-for drv in `ls /dev/xv* | grep -v xvda`
-do
-  umount $drv || :
-  mkdir -p ${drv//dev/data}
-  echo "$drv ${drv//dev/data} ext4 defaults,noatime,nodiratime 0 0" >> /etc/fstab
-  nohup mkfs.ext4 -m 0 -T largefile4 $drv &
-done
-wait
-
-echo # resizing the root partition
-(echo u;echo d; echo n; echo p; echo 1; cat /sys/block/xvda/xvda1/start; echo; echo w) | fdisk /dev/xvda || :
-
+# AWS specific
+#echo # formatting ephemeral drives and mounting
+#sed '/^\/dev\/xvd[b-z]/d' -i /etc/fstab
+#for drv in `ls /dev/xv* | grep -v xvda`
+#do
+#  umount $drv || :
+#  mkdir -p ${drv//dev/data}
+#  echo "$drv ${drv//dev/data} ext4 defaults,noatime,nodiratime 0 0" >> /etc/fstab
+#  nohup mkfs.ext4 -m 0 -T largefile4 $drv &
+#done
+#wait
+#
+#echo # resizing the root partition
+#(echo u;echo d; echo n; echo p; echo 1; cat /sys/block/xvda/xvda1/start; echo; echo w) | fdisk /dev/xvda || :
 
 cat <<-'EOF'
  Now to install ambari-server & ambari-client packages
 
 EOF
 
-
-JAVA_HOME=/etc/alternatives/java_sdk
-curl -o /etc/yum.repos.d/ambari.repo http://public-repo-1.hortonworks.com/ambari/centos6/1.x/updates/1.7.0/ambari.repo \
+AMBARI_VERSION=${AMBARI_VERSION:-1.7.0}
+curl -o /etc/yum.repos.d/ambari.repo http://public-repo-1.hortonworks.com/ambari/centos6/1.x/updates/$AMBARI_VERSION/ambari.repo \
  || error 'Ambari repo setup failed'
 
+JAVA_HOME=${JAVA_HOME:-/etc/alternatives/java_sdk}
 if [[ "${arg_r}" == "server" ]]; then
   yum install -y ambari-server \
    || error 'Ambari Server Installation failed'
   ambari-server setup -j ${JAVA_HOME} -s \
    || error 'Ambari Server setup failed'
-  ambari-server start \
+  service ambari-server start \
    || error 'Ambari Server start-up failed'
 fi
 
@@ -278,7 +278,7 @@ if [[ "${arg_r}" == "client" ]]; then
   yum install -y ambari-agent \
    || error 'Ambari Agent Installation failed'
   sed 's/^hostname=.*/hostname='"${arg_h}"'/' -i /etc/ambari-agent/conf/ambari-agent.ini
-  ambari-agent start \
+  service ambari-agent start \
    || error 'Ambari Agent start-up failed'
 fi
 
