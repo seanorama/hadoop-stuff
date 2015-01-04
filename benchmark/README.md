@@ -5,9 +5,18 @@
 
   ```
   sudo yum groupinstall -y "Development tools"
-  sudo su - hive
-  git clone https://github.com/cartershanklin/hive-testbench
   ```
 
 - Follow instructions: https://github.com/cartershanklin/hive-testbench
-  - Do TPC-DS benchmark
+
+- Just to confirm hive is read:
+```
+sudo su - hive
+git clone https://github.com/seanorama/hive-testbench
+cd hive-testbench
+./tpcds-build.sh
+./tpcds-setup.sh 2
+cd sample-queries-tpcds
+hive > use tpcds_bin_partitioned_orc_2;
+hive > source query55.sql;
+```
