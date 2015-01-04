@@ -277,7 +277,7 @@
         "KeyName" : { "Ref" : "KeyName" },
         "UserData": {
           "Fn::Base64": { "Fn::Join": ["",[
-            "#!/bin/bash\n",
+            "#!/bin/bash -ex\n",
             "\n",
             "function error_exit\n",
             "{\n",
@@ -351,7 +351,7 @@
         "AssociatePublicIpAddress" : "true",
         "UserData": {
           "Fn::Base64": { "Fn::Join": ["",[
-            "#!/bin/bash\n",
+            "#!/bin/bash -ex\n",
             "\n",
             "function error_exit\n",
             "{\n",
