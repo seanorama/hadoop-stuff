@@ -261,15 +261,9 @@
       },
       "Properties" : {
         "BlockDeviceMappings" : {"Fn::If" : ["MasterUseEBSBool",[
-          { "DeviceName" : "/dev/sda1", "Ebs" : { "VolumeSize" : "100", "VolumeType" : "gp2" } },
-          { "DeviceName" : "/dev/sdb", "Ebs" : { "VolumeSize" : 500, "VolumeType" : "gp2", "DeleteOnTermination" : "True" } },
-          { "DeviceName" : "/dev/sdc", "Ebs" : { "VolumeSize" : 500, "VolumeType" : "gp2", "DeleteOnTermination" : "True" } }
+          { "DeviceName" : "/dev/sda1", "Ebs" : { "VolumeSize" : "100", "VolumeType" : "gp2" } }
         ],[
-          { "DeviceName" : "/dev/sda1", "Ebs" : { "VolumeSize" : "100", "VolumeType" : "gp2" } },
-          { "DeviceName" : "/dev/sdb", "VirtualName": "ephemeral0" },
-          { "DeviceName" : "/dev/sdc", "VirtualName": "ephemeral1" },
-          { "DeviceName" : "/dev/sdd", "VirtualName": "ephemeral2" },
-          { "DeviceName" : "/dev/sde", "VirtualName": "ephemeral3" }
+          { "DeviceName" : "/dev/sda1", "Ebs" : { "VolumeSize" : "100", "VolumeType" : "gp2" } }
         ]]},
         "ImageId" : { "Fn::FindInMap" : [ "RHEL66", { "Ref" : "AWS::Region" }, "AMI" ] },
         "NetworkInterfaces" : [{
@@ -283,7 +277,7 @@
         "KeyName" : { "Ref" : "KeyName" },
         "UserData": {
           "Fn::Base64": { "Fn::Join": ["",[
-            "#!/bin/bash -ex\n",
+            "#!/bin/bash\n",
             "\n",
             "function error_exit\n",
             "{\n",
@@ -346,42 +340,9 @@
       "Type" : "AWS::AutoScaling::LaunchConfiguration",
       "Properties" : {
         "BlockDeviceMappings" : {"Fn::If" : ["WorkerUseEBSBool",[
-          { "DeviceName" : "/dev/sda1", "Ebs" : { "VolumeSize" : "100", "VolumeType" : "gp2" } },
-          { "DeviceName" : "/dev/sdb", "Ebs" : { "VolumeSize" : 1000, "VolumeType" : "gp2", "DeleteOnTermination" : "True" } },
-          { "DeviceName" : "/dev/sdc", "Ebs" : { "VolumeSize" : 1000, "VolumeType" : "gp2", "DeleteOnTermination" : "True" } },
-          { "DeviceName" : "/dev/sdd", "Ebs" : { "VolumeSize" : 1000, "VolumeType" : "gp2", "DeleteOnTermination" : "True" } },
-          { "DeviceName" : "/dev/sde", "Ebs" : { "VolumeSize" : 1000, "VolumeType" : "gp2", "DeleteOnTermination" : "True" } },
-          { "DeviceName" : "/dev/sdf", "Ebs" : { "VolumeSize" : 1000, "VolumeType" : "gp2", "DeleteOnTermination" : "True" } },
-          { "DeviceName" : "/dev/sdg", "Ebs" : { "VolumeSize" : 1000, "VolumeType" : "gp2", "DeleteOnTermination" : "True" } },
-          { "DeviceName" : "/dev/sdh", "Ebs" : { "VolumeSize" : 1000, "VolumeType" : "gp2", "DeleteOnTermination" : "True" } },
-          { "DeviceName" : "/dev/sdi", "Ebs" : { "VolumeSize" : 1000, "VolumeType" : "gp2", "DeleteOnTermination" : "True" } },
-          { "DeviceName" : "/dev/sdj", "Ebs" : { "VolumeSize" : 1000, "VolumeType" : "gp2", "DeleteOnTermination" : "True" } }
+          { "DeviceName" : "/dev/sda1", "Ebs" : { "VolumeSize" : "100", "VolumeType" : "gp2" } }
         ],[
-          { "DeviceName" : "/dev/sda1", "Ebs" : { "VolumeSize" : "100", "VolumeType" : "gp2" } },
-          { "DeviceName" : "/dev/sdb", "VirtualName": "ephemeral0" },
-          { "DeviceName" : "/dev/sdc", "VirtualName": "ephemeral1" },
-          { "DeviceName" : "/dev/sdd", "VirtualName": "ephemeral2" },
-          { "DeviceName" : "/dev/sde", "VirtualName": "ephemeral3" },
-          { "DeviceName" : "/dev/sdf", "VirtualName": "ephemeral4" },
-          { "DeviceName" : "/dev/sdg", "VirtualName": "ephemeral5" },
-          { "DeviceName" : "/dev/sdh", "VirtualName": "ephemeral6" },
-          { "DeviceName" : "/dev/sdi", "VirtualName": "ephemeral7" },
-          { "DeviceName" : "/dev/sdj", "VirtualName": "ephemeral8" },
-          { "DeviceName" : "/dev/sdk", "VirtualName": "ephemeral9" },
-          { "DeviceName" : "/dev/sdl", "VirtualName": "ephemeral10" },
-          { "DeviceName" : "/dev/sdm", "VirtualName": "ephemeral11" },
-          { "DeviceName" : "/dev/sdn", "VirtualName": "ephemeral12" },
-          { "DeviceName" : "/dev/sdo", "VirtualName": "ephemeral13" },
-          { "DeviceName" : "/dev/sdp", "VirtualName": "ephemeral14" },
-          { "DeviceName" : "/dev/sdq", "VirtualName": "ephemeral15" },
-          { "DeviceName" : "/dev/sdr", "VirtualName": "ephemeral16" },
-          { "DeviceName" : "/dev/sds", "VirtualName": "ephemeral17" },
-          { "DeviceName" : "/dev/sdt", "VirtualName": "ephemeral18" },
-          { "DeviceName" : "/dev/sdu", "VirtualName": "ephemeral19" },
-          { "DeviceName" : "/dev/sdv", "VirtualName": "ephemeral20" },
-          { "DeviceName" : "/dev/sdw", "VirtualName": "ephemeral21" },
-          { "DeviceName" : "/dev/sdx", "VirtualName": "ephemeral22" },
-          { "DeviceName" : "/dev/sdy", "VirtualName": "ephemeral23" }
+          { "DeviceName" : "/dev/sda1", "Ebs" : { "VolumeSize" : "100", "VolumeType" : "gp2" } }
         ]]},
         "ImageId"        : { "Fn::FindInMap" : [ "RHEL66", { "Ref" : "AWS::Region" }, "AMI" ] },
         "SecurityGroups" : [ { "Ref" : "DefaultSecurityGroup" } ],
@@ -390,7 +351,7 @@
         "AssociatePublicIpAddress" : "true",
         "UserData": {
           "Fn::Base64": { "Fn::Join": ["",[
-            "#!/bin/bash -ex\n",
+            "#!/bin/bash\n",
             "\n",
             "function error_exit\n",
             "{\n",
