@@ -17,6 +17,7 @@ cd hive-testbench
 ./tpcds-build.sh
 ./tpcds-setup.sh 2
 cd sample-queries-tpcds
+hive
 hive > use tpcds_bin_partitioned_orc_2;
 hive > source query55.sql;
 ```

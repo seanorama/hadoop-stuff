@@ -23,18 +23,7 @@
       "Description" : "Instance type for worker node",
       "Type" : "String",
       "Default" : "i2.4xlarge",
-      "ConstraintDescription" : "Must be a valid EC2 instance type.",
-      "AllowedValues": [
-        "m3.large",
-        "m3.xlarge",
-        "m3.2xlarge",
-        "c3.xlarge",
-        "c3.2xlarge",
-        "c3.4xlarge",
-        "i2.xlarge",
-        "i2.2xlarge",
-        "i2.4xlarge"
-      ]
+      "ConstraintDescription" : "Must be a valid EC2 instance type."
     },
 
     "WorkerInstanceCount" : {
@@ -49,25 +38,14 @@
       "Description" : "Instance type for master node",
       "Type" : "String",
       "Default" : "c3.4xlarge",
-      "ConstraintDescription" : "Must be a valid EC2 instance type.",
-      "AllowedValues": [
-        "m3.large",
-        "m3.xlarge",
-        "m3.2xlarge",
-        "c3.xlarge",
-        "c3.2xlarge",
-        "c3.4xlarge"
-      ]
+      "ConstraintDescription" : "Must be a valid EC2 instance type."
     },
 
     "AmbariInstanceType" : {
       "Description" : "Instance type for Ambari node",
       "Type" : "String",
       "Default" : "m3.large",
-      "ConstraintDescription" : "Must be a valid EC2 instance type.",
-      "AllowedValues": [
-        "m3.large"
-      ]
+      "ConstraintDescription" : "Must be a valid EC2 instance type."
     },
 
     "WorkerUseEBS" : {
@@ -277,7 +255,7 @@
         "KeyName" : { "Ref" : "KeyName" },
         "UserData": {
           "Fn::Base64": { "Fn::Join": ["",[
-            "#!/bin/bash -ex\n",
+            "#!/bin/bash\n",
             "\n",
             "function error_exit\n",
             "{\n",
@@ -382,7 +360,7 @@
             " || error_exit 'Ambari Agent start-up failed'\n",
             "\n",
             "## If all went well, signal success\n",
-            "/opt/aws/bin/cfn-signal -e 0 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref": "AWS::Region"}, " --resource WorkerNodes\n",
+            "/opt/aws/bin/cfn-signal -e 0 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref":"AWS::Region"}, " --resource WorkerNodes\n",
             "\n",
             "## Reboot Server\n",
             "reboot"
