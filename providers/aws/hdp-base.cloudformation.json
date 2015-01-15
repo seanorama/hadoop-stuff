@@ -1,0 +1,371 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Description" : "CloudFormation template to Deploy Hortonworks Data Platform on VPC with a public subnet",
+  "Parameters" : {
+
+    "KeyName": {
+      "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instance",
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "ConstraintDescription" : "Can contain only ASCII characters."
+    },
+
+    "SSHLocation" : {
+      "Description" : "SSH access for Ambari Node",
+      "Type" : "String",
+      "MinLength": "9",
+      "MaxLength": "18",
+      "Default" : "0.0.0.0/0",
+      "AllowedPattern" : "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription" : "Must be a valid CIDR range."
+    },
+
+    "WorkerInstanceType" : {
+      "Description" : "Instance type for worker node",
+      "Type" : "String",
+      "Default" : "i2.4xlarge",
+      "ConstraintDescription" : "Must be a valid EC2 instance type."
+    },
+
+    "WorkerInstanceCount" : {
+      "Description" : "Number of Worker instances",
+      "Type" : "Number",
+      "Default" : "2",
+      "MinValue" : "1",
+      "MaxValue" : "99"
+    },
+
+    "MasterInstanceType" : {
+      "Description" : "Instance type for master node",
+      "Type" : "String",
+      "Default" : "c3.4xlarge",
+      "ConstraintDescription" : "Must be a valid EC2 instance type."
+    },
+
+    "AmbariInstanceType" : {
+      "Description" : "Instance type for Ambari node",
+      "Type" : "String",
+      "Default" : "m3.large",
+      "ConstraintDescription" : "Must be a valid EC2 instance type."
+    },
+
+    "WorkerUseEBS" : {
+      "Description" : "Use EBS Volumes for the Worker Node",
+      "Default" : "no",
+      "Type" : "String",
+      "AllowedValues" : ["yes","no"],
+      "ConstraintDescription" : "Must be yes or no only."
+    },
+
+    "MasterUseEBS" : {
+      "Description" : "Use EBS Volumes for the Master Node",
+      "Default" : "no",
+      "Type" : "String",
+      "AllowedValues" : ["yes","no"],
+      "ConstraintDescription" : "Must be yes or no only."
+    }
+  },
+
+  "Mappings" : {
+    "SubnetConfig" : {
+      "VPC"     : { "CIDR" : "10.0.0.0/16" },
+      "Public"  : { "CIDR" : "10.0.0.0/24" }
+    },
+
+    "RHEL66" : {
+      "ap-northeast-1"     : { "AMI" : "ami-a15666a0" },
+      "ap-southeast-1"     : { "AMI" : "ami-3813326a" },
+      "ap-southeast-2"     : { "AMI" : "ami-55e38e6f" },
+      "eu-west-1"          : { "AMI" : "ami-9cfd53eb" },
+      "sa-east-1"          : { "AMI" : "ami-995ce884" },
+      "us-east-1"          : { "AMI" : "ami-aed06ac6" },
+      "us-west-1"          : { "AMI" : "ami-69ccd92c" },
+      "us-west-2"          : { "AMI" : "ami-5fbcf36f" }
+    },
+
+    "CENTOS6" : {
+      "ap-northeast-1": { "AMI": "ami-25436924" },
+      "ap-southeast-1": { "AMI": "ami-0aaf8858" },
+      "ap-southeast-2": { "AMI": "ami-ef5133d5" },
+      "eu-west-1": { "AMI": "ami-4ac6653d" },
+      "sa-east-1": { "AMI": "ami-9b962386" },
+      "us-east-1": { "AMI": "ami-bc8131d4" },
+      "us-west-1": { "AMI": "ami-33c1ca76" },
+      "us-west-2": { "AMI": "ami-a9de9c99" }
+    }
+  },
+
+  "Conditions" : {
+
+    "MasterUseEBSBool" : { "Fn::Equals" : [ { "Ref" : "MasterUseEBS" } , "yes" ] },
+    "WorkerUseEBSBool" : { "Fn::Equals" : [ { "Ref" : "WorkerUseEBS" } , "yes" ] }
+
+  },
+
+  "Resources" : {
+
+    "VPC" : {
+      "Type" : "AWS::EC2::VPC",
+      "Properties" : {
+        "CidrBlock" : { "Fn::FindInMap" : [ "SubnetConfig", "VPC", "CIDR" ]},
+        "EnableDnsSupport" : "true",
+        "EnableDnsHostnames" : "true"
+      }
+    },
+
+    "PublicSubnet" : {
+      "Type" : "AWS::EC2::Subnet",
+      "Properties" : {
+        "VpcId" : { "Ref" : "VPC" },
+        "CidrBlock" : { "Fn::FindInMap" : [ "SubnetConfig", "Public", "CIDR" ]}
+      }
+    },
+
+    "InternetGateway" : {
+      "Type" : "AWS::EC2::InternetGateway"
+    },
+
+    "AttachGateway" : {
+       "Type" : "AWS::EC2::VPCGatewayAttachment",
+       "Properties" : {
+         "VpcId" : { "Ref" : "VPC" },
+         "InternetGatewayId" : { "Ref" : "InternetGateway" }
+       }
+    },
+
+    "PublicRouteTable" : {
+      "Type" : "AWS::EC2::RouteTable",
+      "Properties" : {
+        "VpcId" : { "Ref" : "VPC" }
+      }
+    },
+
+    "PublicRoute" : {
+      "Type" : "AWS::EC2::Route",
+      "DependsOn" : "AttachGateway",
+      "Properties" : {
+        "RouteTableId" : { "Ref" : "PublicRouteTable" },
+        "DestinationCidrBlock" : "0.0.0.0/0",
+        "GatewayId" : { "Ref" : "InternetGateway" }
+      }
+    },
+
+    "PublicSubnetRouteTableAssociation" : {
+      "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties" : {
+        "SubnetId" : { "Ref" : "PublicSubnet" },
+        "RouteTableId" : { "Ref" : "PublicRouteTable" }
+      }
+    },
+
+    "AmbariNode" : {
+      "Type" : "AWS::EC2::Instance",
+      "CreationPolicy": {
+        "ResourceSignal": {
+          "Count": 1,
+          "Timeout": "PT30M"
+        }
+      },
+      "Properties" : {
+        "BlockDeviceMappings" : [
+          { "DeviceName" : "/dev/sda1", "Ebs" : { "VolumeSize" : "20", "VolumeType" : "gp2" } }
+        ],
+        "ImageId" : { "Fn::FindInMap" : [ "RHEL66", { "Ref" : "AWS::Region" }, "AMI" ] },
+        "NetworkInterfaces" : [{
+          "GroupSet"                 : [{ "Ref" : "AmbariSecurityGroup" }],
+          "AssociatePublicIpAddress" : "true",
+          "DeviceIndex"              : "0",
+          "DeleteOnTermination"      : "true",
+          "SubnetId"                 : { "Ref" : "PublicSubnet" }
+        }],
+        "InstanceType" : { "Ref" : "AmbariInstanceType" },
+        "KeyName" : { "Ref" : "KeyName" },
+        "UserData": {
+          "Fn::Base64": { "Fn::Join": ["",[
+            "#!/bin/bash -ex\n",
+            "\n",
+            "function error_exit\n",
+            "{\n",
+            " /opt/aws/bin/cfn-signal -e 1 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref":"AWS::Region"}, " --resource AmbariNode\n",
+            " exit 1\n",
+            "}\n",
+            "\n",
+            "## Install and Update CloudFormation\n",
+            "rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm || :\n",
+            "yum install -y https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.amzn1.noarch.rpm\n",
+            "yum update -y aws-cfn-bootstrap\n",
+            "\n",
+            "(echo u;echo d; echo n; echo p; echo 1; cat /sys/block/xvda/xvda1/start; echo; echo w) | fdisk /dev/xvda || :\n",
+            "\n",
+            "## If all went well, signal success\n",
+            "/opt/aws/bin/cfn-signal -e 0 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref":"AWS::Region"}, " --resource AmbariNode\n",
+            "\n",
+            "## Reboot Server\n",
+            "reboot"
+          ]]}
+        }
+      }
+    },
+
+    "MasterNode" : {
+      "Type" : "AWS::EC2::Instance",
+      "DependsOn" : "AmbariNode",
+      "CreationPolicy": {
+        "ResourceSignal": {
+          "Count": 1,
+          "Timeout": "PT30M"
+        }
+      },
+      "Properties" : {
+        "BlockDeviceMappings" : {"Fn::If" : ["MasterUseEBSBool",[
+          { "DeviceName" : "/dev/sda1", "Ebs" : { "VolumeSize" : "20", "VolumeType" : "gp2" } }
+        ],[
+          { "DeviceName" : "/dev/sda1", "Ebs" : { "VolumeSize" : "20", "VolumeType" : "gp2" } }
+        ]]},
+        "ImageId" : { "Fn::FindInMap" : [ "RHEL66", { "Ref" : "AWS::Region" }, "AMI" ] },
+        "NetworkInterfaces" : [{
+          "GroupSet"                 : [{ "Ref" : "DefaultSecurityGroup" }],
+          "AssociatePublicIpAddress" : "true",
+          "DeviceIndex"              : "0",
+          "DeleteOnTermination"      : "true",
+          "SubnetId"                 : { "Ref" : "PublicSubnet" }
+        }],
+        "InstanceType" : { "Ref" : "MasterInstanceType" },
+        "KeyName" : { "Ref" : "KeyName" },
+        "UserData": {
+          "Fn::Base64": { "Fn::Join": ["",[
+            "#!/bin/bash\n",
+            "\n",
+            "function error_exit\n",
+            "{\n",
+            " /opt/aws/bin/cfn-signal -e 1 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref":"AWS::Region"}, " --resource MasterNode\n",
+            " exit 1\n",
+            "}\n",
+            "\n",
+            "## Install and Update CloudFormation\n",
+            "rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm || :\n",
+            "yum install -y https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.amzn1.noarch.rpm\n",
+            "yum update -y aws-cfn-bootstrap\n",
+            "\n",
+            "## Running setup script\n",
+            "curl https://raw.githubusercontent.com/seanorama/hadoop-stuff/master/providers/aws/hdp-setup.sh -o /tmp/hdp-setup.sh",
+            " || error_exit 'Failed to download setup script'\n",
+            "chmod a+x /tmp/hdp-setup.sh\n",
+            "/tmp/hdp-setup.sh > /tmp/hdp-setup.log 2>&1",
+            " || error_exit 'Install failed.See hdp-setup.log for details'\n",
+            "\n",
+            "## Install Ambari\n",
+            "JAVA_HOME=/etc/alternatives/java_sdk\n",
+            "curl http://public-repo-1.hortonworks.com/ambari/centos6/1.x/updates/1.7.0/ambari.repo -o /etc/yum.repos.d/ambari.repo",
+            " || error_exit 'Ambari repo setup failed'\n",
+            "yum install -y ambari-agent",
+            " || error_exit 'Ambari Agent Installation failed'\n",
+            "sed 's/^hostname=.*/hostname=", {"Fn::GetAtt": ["AmbariNode","PrivateDnsName"] }, "/' -i /etc/ambari-agent/conf/ambari-agent.ini\n",
+            "service ambari-agent start",
+            " || error_exit 'Ambari Agent start-up failed'\n",
+            "\n",
+            "## If all went well, signal success\n",
+            "/opt/aws/bin/cfn-signal -e 0 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref": "AWS::Region"}, " --resource MasterNode\n",
+            "\n",
+            "## Reboot Server\n",
+            "reboot"
+          ]]}
+        }
+      }
+    },
+
+    "WorkerNodes" : {
+      "Type" : "AWS::AutoScaling::AutoScalingGroup",
+      "DependsOn" : "AmbariNode",
+      "Properties" : {
+        "AvailabilityZones" : [{ "Fn::GetAtt" : [ "PublicSubnet", "AvailabilityZone" ] }],
+        "VPCZoneIdentifier" : [{ "Ref" : "PublicSubnet" }],
+        "LaunchConfigurationName" : { "Ref" : "WorkerNodeLaunchConfig" },
+        "MinSize" : 1,
+        "MaxSize" : { "Ref" : "WorkerInstanceCount" },
+        "DesiredCapacity" : { "Ref" : "WorkerInstanceCount" }
+      },
+      "CreationPolicy": {
+        "ResourceSignal": {
+          "Count": { "Ref" : "WorkerInstanceCount" },
+          "Timeout": "PT30M"
+        }
+      }
+    },
+
+    "WorkerNodeLaunchConfig"  : {
+      "Type" : "AWS::AutoScaling::LaunchConfiguration",
+      "Properties" : {
+        "BlockDeviceMappings" : {"Fn::If" : ["WorkerUseEBSBool",[
+          { "DeviceName" : "/dev/sda1", "Ebs" : { "VolumeSize" : "20", "VolumeType" : "gp2" } }
+        ],[
+          { "DeviceName" : "/dev/sda1", "Ebs" : { "VolumeSize" : "20", "VolumeType" : "gp2" } }
+        ]]},
+        "ImageId"        : { "Fn::FindInMap" : [ "RHEL66", { "Ref" : "AWS::Region" }, "AMI" ] },
+        "SecurityGroups" : [ { "Ref" : "DefaultSecurityGroup" } ],
+        "InstanceType"   : { "Ref" : "WorkerInstanceType" },
+        "KeyName"        : { "Ref" : "KeyName" },
+        "AssociatePublicIpAddress" : "true",
+        "UserData": {
+          "Fn::Base64": { "Fn::Join": ["",[
+            "#!/bin/bash -ex\n",
+            "\n",
+            "function error_exit\n",
+            "{\n",
+            " /opt/aws/bin/cfn-signal -e 1 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref":"AWS::Region"}, " --resource WorkerNodes\n",
+            " exit 1\n",
+            "}\n",
+            "\n",
+            "## Install and Update CloudFormation\n",
+            "rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm || :\n",
+            "yum install -y https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.amzn1.noarch.rpm\n",
+            "yum update -y aws-cfn-bootstrap\n",
+            "\n",
+            "(echo u;echo d; echo n; echo p; echo 1; cat /sys/block/xvda/xvda1/start; echo; echo w) | fdisk /dev/xvda || :\n",
+            "\n",
+            "## If all went well, signal success\n",
+            "/opt/aws/bin/cfn-signal -e 0 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref":"AWS::Region"}, " --resource WorkerNodes\n",
+            "\n",
+            "## Reboot Server\n",
+            "reboot"
+          ]]}
+        }
+      }
+    },
+
+    "AmbariSecurityGroup" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Access for the Ambari Nodes",
+        "VpcId" : { "Ref" : "VPC" },
+        "SecurityGroupIngress" : [
+          { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp" : "0.0.0.0/0"} ,
+          { "IpProtocol" : "tcp", "FromPort" : "5099", "ToPort" : "5099", "CidrIp" : "0.0.0.0/0"} ,
+          { "IpProtocol" : "tcp", "FromPort" : "8080", "ToPort" : "8080", "CidrIp" : "0.0.0.0/0"} ,
+          { "IpProtocol" : "icmp", "FromPort" : "-1", "ToPort" : "-1", "CidrIp" : "10.0.0.0/24"} ,
+          { "IpProtocol" : "tcp", "FromPort" : "0", "ToPort" : "65535", "CidrIp" : "10.0.0.0/24"} ,
+          { "IpProtocol" : "udp", "FromPort" : "0", "ToPort" : "65535", "CidrIp" : "10.0.0.0/24"} ,
+          { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : { "Ref" : "SSHLocation" } }
+        ]
+      }
+    },
+
+    "DefaultSecurityGroup" : {
+        "Type" : "AWS::EC2::SecurityGroup",
+        "Properties" : {
+          "GroupDescription" : "Default Security group for all the Nodes",
+          "VpcId" : {"Ref" : "VPC"},
+          "SecurityGroupIngress" : [
+            { "IpProtocol" : "icmp", "FromPort" : "-1", "ToPort" : "-1", "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "VPC", "CIDR" ]} },
+            { "IpProtocol" : "tcp", "FromPort" : "5099", "ToPort" : "5099", "CidrIp" : "0.0.0.0/0"} ,
+            { "IpProtocol" : "tcp", "FromPort" : "0", "ToPort" : "65535", "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "VPC", "CIDR" ]} },
+            { "IpProtocol" : "udp", "FromPort" : "0", "ToPort" : "65535", "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "VPC", "CIDR" ]} },
+            { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : { "Ref" : "SSHLocation" } }
+          ]
+        }
+     }
+  },
+
+  "Outputs" : {
+    "Subnet" : { "Value" : { "Ref" : "PublicSubnet" } }
+  }
+}
