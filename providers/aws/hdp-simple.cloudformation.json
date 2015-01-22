@@ -103,71 +103,93 @@
 
   "Resources" : {
 
+    "AmbariAccessRole" : {
+        "Type"  : "AWS::IAM::Role",
+        "Properties" : {
+            "AssumeRolePolicyDocument" : {
+                "Statement" : [ {
+                    "Effect" : "Allow",
+                    "Principal" : {
+                        "Service" : [ "ec2.amazonaws.com" ]
+                    },
+                    "Action" : [ "sts:AssumeRole" ]
+                } ]
+            },
+            "Path" : "/"
+        }
+    },
+
+    "S3RolePolicies" : {
+        "Type" : "AWS::IAM::Policy",
+        "Properties" : {
+            "PolicyName" : "s3access",
+            "PolicyDocument" : {
+                "Statement" : [ {
+                    "Effect" : "Allow",
+                    "Action" : "s3:*",
+                    "Resource" : "*"
+                }]
+            },
+            "Roles" : [ { "Ref" : "AmbariAccessRole" },  ]
+        }
+    },
+
+    "EC2RolePolicies" : {
+        "Type" : "AWS::IAM::Policy",
+        "Properties" : {
+            "PolicyName": "EC2Access",
+            "PolicyDocument" : {
+                "Statement" : [ {
+                    "Effect" : "Allow",
+                    "Action": ["ec2:Describe*"],
+                    "Resource": ["*"]
+                }]
+            },
+            "Roles" : [ { "Ref" : "AmbariAccessRole" } ]
+        }
+    },
+
+    "AmbariInstanceProfile": {
+        "Type": "AWS::IAM::InstanceProfile",
+        "Properties": {
+            "Path": "/",
+            "Roles": [ { "Ref": "AmbariAccessRole" } ]
+        }
+    },
+
     "S3Role": {
-   		"Type": "AWS::IAM::Role",
-		"Properties": {
-     	"AssumeRolePolicyDocument": {
-        "Statement": [ {
-            "Effect": "Allow",
-            "Principal": {
-               "Service": [ "ec2.amazonaws.com" ]
+        "Type": "AWS::IAM::Role",
+        "Properties": {
+            "AssumeRolePolicyDocument": {
+                "Statement": [ {
+                    "Effect": "Allow",
+                    "Principal": {
+                       "Service": [ "ec2.amazonaws.com" ]
+                    },
+                    "Action": [ "sts:AssumeRole" ]
+                } ]
             },
-            "Action": [ "sts:AssumeRole" ]
-         } ]
-      },
-      "Path": "/",
-      "Policies": [ {
-         "PolicyName": "S3Access",
-         "PolicyDocument": {
-            "Statement": [
-			  {"Effect": "Allow","Action": ["s3:*"],"Resource": ["*"]}
-			]}
+        "Path": "/",
+        "Policies": [ {
+            "PolicyName": "S3Access",
+            "PolicyDocument": {
+                "Statement": [{
+                    "Effect": "Allow",
+                    "Action": ["s3:*"],
+                    "Resource": ["*"]
+                }]
+            }
          }]
-      }
-   	},
+        }
+    },
 
-   	 "EC2DescribeRole": {
-   		"Type": "AWS::IAM::Role",
-		"Properties": {
-     	"AssumeRolePolicyDocument": {
-        "Statement": [ {
-            "Effect": "Allow",
-            "Principal": {
-               "Service": [ "ec2.amazonaws.com" ]
-            },
-            "Action": [ "sts:AssumeRole" ]
-         } ]
-      },
-      "Path": "/",
-      "Policies": [ {
-         "PolicyName": "EC2Access",
-         "PolicyDocument": {
-            "Statement": [
-			  {"Effect": "Allow","Action": ["ec2:Describe*"],"Resource": ["*"]}
-			]}
-         }]
-      }
-   	},
-
-   	"AmbariInstanceProfile": {
-   		"Type": "AWS::IAM::InstanceProfile",
-   		"Properties": {
-      		"Path": "/",
-      		"Roles": [
-      			{ "Ref": "EC2DescribeRole", "Ref": "S3Role" }
-      		]
-   		}
-	},
-
-	"NodeInstanceProfile": {
-   		"Type": "AWS::IAM::InstanceProfile",
-   		"Properties": {
-      		"Path": "/",
-      		"Roles": [ {
-         		"Ref": "S3Role"
-      		} ]
-   		}
-	},
+    "NodeInstanceProfile": {
+        "Type": "AWS::IAM::InstanceProfile",
+        "Properties": {
+            "Path": "/",
+            "Roles": [ { "Ref": "S3Role" } ]
+        }
+    },
 
 
     "VPC" : {
@@ -249,13 +271,21 @@
         "KeyName" : { "Ref" : "KeyName" },
         "UserData": {
           "Fn::Base64": { "Fn::Join": ["",[
-            "#!/bin/bash -ex\n",
+            "#!/usr/bin/env bash\n",
+            "region=\"", {"Ref":"AWS::Region" }, "\"\n",
+            "stack=\"", {"Ref":"AWS::StackName" }, "\"\n",
+            "resource=AmbariNode\n",
             "\n",
-            "function error_exit\n",
-            "{\n",
-            " /opt/aws/bin/cfn-signal -e 1 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref":"AWS::Region"}, " --resource AmbariNode\n",
-            " exit 1\n",
+            "error_exit() {\n",
+            "  local line_no=$1\n",
+            "  local exit_code=$2\n",
+            "  /opt/aws/bin/cfn-signal -e ${exit_code}",
+            "     --region ${region}",
+            "     --stack ${stack}",
+            "     --resource ${resource}\n",
+            "  exit ${exit_code}\n",
             "}\n",
+            "trap 'error_exit ${LINENO} ${?}' ERR\n",
             "\n",
             "## Install and Update CloudFormation\n",
             "rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm || :\n",
@@ -287,7 +317,10 @@
             " || error_exit 'Ambari Server start-up failed'\n",
             "\n",
             "## If all went well, signal success\n",
-            "/opt/aws/bin/cfn-signal -e 0 --stack ", {"Ref":"AWS::StackName"}, " --region ", {"Ref":"AWS::Region"}, " --resource AmbariNode\n",
+            "/opt/aws/bin/cfn-signal -e $? ",
+            "   --region ${region}",
+            "   --stack ${stack}",
+            "   --resource ${resource}\n",
             "\n",
             "## Reboot Server\n",
             "reboot"
