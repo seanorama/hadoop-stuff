@@ -103,6 +103,73 @@
 
   "Resources" : {
 
+    "S3Role": {
+   		"Type": "AWS::IAM::Role",
+		"Properties": {
+     	"AssumeRolePolicyDocument": {
+        "Statement": [ {
+            "Effect": "Allow",
+            "Principal": {
+               "Service": [ "ec2.amazonaws.com" ]
+            },
+            "Action": [ "sts:AssumeRole" ]
+         } ]
+      },
+      "Path": "/",
+      "Policies": [ {
+         "PolicyName": "S3Access",
+         "PolicyDocument": {
+            "Statement": [ 
+			  {"Effect": "Allow","Action": ["s3:*"],"Resource": ["*"]}
+			]}
+         }]
+      }
+   	},
+
+   	 "EC2DescribeRole": {
+   		"Type": "AWS::IAM::Role",
+		"Properties": {
+     	"AssumeRolePolicyDocument": {
+        "Statement": [ {
+            "Effect": "Allow",
+            "Principal": {
+               "Service": [ "ec2.amazonaws.com" ]
+            },
+            "Action": [ "sts:AssumeRole" ]
+         } ]
+      },
+      "Path": "/",
+      "Policies": [ {
+         "PolicyName": "S3Access",
+         "PolicyDocument": {
+            "Statement": [ 
+			  {"Effect": "Allow","Action": ["ec2:Describe*"],"Resource": ["*"]}
+			]}
+         }]
+      }
+   	},
+
+   	"AmbariInstanceProfile": {
+   		"Type": "AWS::IAM::InstanceProfile",
+   		"Properties": {
+      		"Path": "/",
+      		"Roles": [ 
+      			{ "Ref": "EC2DescribeRole" }, { "Ref": "S3Role" }
+      		]
+   		}
+	},
+
+	"NodeInstanceProfile": {
+   		"Type": "AWS::IAM::InstanceProfile",
+   		"Properties": {
+      		"Path": "/",
+      		"Roles": [ {
+         		"Ref": "S3Role"
+      		} ]
+   		}
+	},
+
+
     "VPC" : {
       "Type" : "AWS::EC2::VPC",
       "Properties" : {
@@ -178,6 +245,7 @@
           "SubnetId"                 : { "Ref" : "PublicSubnet" }
         }],
         "InstanceType" : { "Ref" : "AmbariInstanceType" },
+        "IamInstanceProfile" : { "Ref": "AmbariInstanceProfile" },
         "KeyName" : { "Ref" : "KeyName" },
         "UserData": {
           "Fn::Base64": { "Fn::Join": ["",[
@@ -258,6 +326,7 @@
           "SubnetId"                 : { "Ref" : "PublicSubnet" }
         }],
         "InstanceType" : { "Ref" : "MasterInstanceType" },
+        "IamInstanceProfile" : { "Ref": "NodeInstanceProfile" },
         "KeyName" : { "Ref" : "KeyName" },
         "UserData": {
           "Fn::Base64": { "Fn::Join": ["",[
@@ -364,6 +433,7 @@
         "ImageId"        : { "Fn::FindInMap" : [ "RHEL66", { "Ref" : "AWS::Region" }, "AMI" ] },
         "SecurityGroups" : [ { "Ref" : "DefaultSecurityGroup" } ],
         "InstanceType"   : { "Ref" : "WorkerInstanceType" },
+        "IamInstanceProfile" : { "Ref": "NodeInstanceProfile" },
         "KeyName"        : { "Ref" : "KeyName" },
         "AssociatePublicIpAddress" : "true",
         "UserData": {
