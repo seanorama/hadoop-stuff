@@ -119,7 +119,7 @@
       "Policies": [ {
          "PolicyName": "S3Access",
          "PolicyDocument": {
-            "Statement": [ 
+            "Statement": [
 			  {"Effect": "Allow","Action": ["s3:*"],"Resource": ["*"]}
 			]}
          }]
@@ -140,9 +140,9 @@
       },
       "Path": "/",
       "Policies": [ {
-         "PolicyName": "S3Access",
+         "PolicyName": "EC2Access",
          "PolicyDocument": {
-            "Statement": [ 
+            "Statement": [
 			  {"Effect": "Allow","Action": ["ec2:Describe*"],"Resource": ["*"]}
 			]}
          }]
@@ -153,8 +153,8 @@
    		"Type": "AWS::IAM::InstanceProfile",
    		"Properties": {
       		"Path": "/",
-      		"Roles": [ 
-      			{ "Ref": "EC2DescribeRole" }, { "Ref": "S3Role" }
+      		"Roles": [
+      			{ "Ref": "EC2DescribeRole", "Ref": "S3Role" }
       		]
    		}
 	},
